@@ -35,4 +35,4 @@ def download_monthly_update() -> None:
 
 
 if __name__ == "__main__":
-    download_backfill_files()
+    download_monthly_update()
