@@ -162,4 +162,52 @@ function get_new_build_share($pdo) {
     return $row['new_build_pct'];
 }
 
+function get_price_by_property_type($pdo, $location = 'ALL') {
+    $stmt = $pdo->prepare("
+        SELECT property_type, average_price
+        FROM dashboard_metrics
+        WHERE location = :location AND property_type IS NOT NULL
+        ORDER BY property_type
+    ");
+    $stmt->execute(['location' => $location]);
+    return $stmt->fetchAll();
+}
+
+function get_price_by_location($pdo, $limit = 10) {
+    $stmt = $pdo->prepare("
+        SELECT location, average_price
+        FROM dashboard_metrics
+        WHERE property_type IS NULL AND location != 'ALL'
+        ORDER BY average_price DESC
+        LIMIT :limit
+    ");
+    $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+function get_tenure_split($pdo, $location = 'ALL') {
+    $metrics = get_metrics_row($pdo, $location, null);
+    return [
+        'Freehold' => $metrics['freehold_share'],
+        'Leasehold' => 100 - $metrics['freehold_share']
+    ];
+}
+
+function get_property_type_share($pdo, $location = 'ALL') {
+    $rows = get_all_property_type_rows($pdo, $location);
+    $share = [];
+    foreach ($rows as $row) {
+        $share[$row['property_type']] = $row['type_share_pct'];
+    }
+    return $share;
+}
+
+function get_new_build_split($pdo, $location = 'ALL') {
+    $metrics = get_metrics_row($pdo, $location, null);
+    return [
+        'New build' => $metrics['new_build_share'],
+        'Existing' => 100 - $metrics['new_build_share']
+    ];
+}
 ?>

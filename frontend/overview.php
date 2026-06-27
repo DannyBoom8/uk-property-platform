@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <style>
         #loading-overlay {
             position: fixed;
@@ -86,8 +87,12 @@ require_once 'queries.php';
 try {
     $pdo = get_db_connection();
     $query_start = microtime(true);
-
+    $price_by_location = get_price_by_location($pdo);
+    $tenure_split = get_tenure_split($pdo);
+    $type_share = get_property_type_share($pdo);
+    $new_build_split = get_new_build_split($pdo);
     $metrics = get_metrics_row($pdo, 'ALL', null);
+    $chart_a_data = get_price_by_property_type($pdo);
 
     $average_price = $metrics['average_price'];
     $percent_change = $metrics['price_change_pct'];
@@ -103,15 +108,106 @@ try {
 document.getElementById('loading-overlay').style.display = 'none';
 </script>
 
-<div style="font-family: Arial, sans-serif; padding: 2rem;">
-    <h2>UK Property Overview</h2>
-    <p>Average price: £<?= number_format($average_price) ?></p>
-    <p>Price change vs. previous 12 months: <?= $percent_change ?>%</p>
-    <p>Sales tracked (last 12 months): <?= number_format($sales_tracked) ?></p>
-    <p>Leasehold vs freehold gap: £<?= number_format($leasehold_gap) ?></p>
-    <p>Price range: £<?= number_format($price_min) ?> – £<?= number_format($price_max) ?></p>
-    <p style="color: #888; font-size: 13px;">Data computed in <?= $query_time ?> seconds</p>
+<div style="display: flex; gap: 20px; margin-top: 2rem;">
+
+    <div style="max-width: 500px; flex: 1;">
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+            <select id="chartA-data">
+                <option value="type">Price by property type</option>
+                <option value="location">Price by location</option>
+            </select>
+            <select id="chartA-type">
+                <option value="bar">Bar</option>
+                <option value="line">Line</option>
+            </select>
+        </div>
+        <canvas id="chartA"></canvas>
+    </div>
+
+    <div style="max-width: 500px; flex: 1;">
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+            <select id="chartB-data">
+                <option value="tenure">Freehold vs leasehold</option>
+                <option value="typeShare">Property type share</option>
+                <option value="newBuild">New build vs existing</option>
+            </select>
+            <select id="chartB-type">
+                <option value="pie">Pie</option>
+                <option value="doughnut">Doughnut</option>
+            </select>
+        </div>
+        <canvas id="chartB"></canvas>
+    </div>
+
 </div>
+
+<script>
+// All the data PHP fetched, handed to JavaScript once
+const chartDatasets = {
+    type: {
+        labels: <?= json_encode(array_column($chart_a_data, 'property_type')) ?>,
+        values: <?= json_encode(array_column($chart_a_data, 'average_price')) ?>
+    },
+    location: {
+        labels: <?= json_encode(array_column($price_by_location, 'location')) ?>,
+        values: <?= json_encode(array_column($price_by_location, 'average_price')) ?>
+    },
+    tenure: {
+        labels: <?= json_encode(array_keys($tenure_split)) ?>,
+        values: <?= json_encode(array_values($tenure_split)) ?>
+    },
+    typeShare: {
+        labels: <?= json_encode(array_keys($type_share)) ?>,
+        values: <?= json_encode(array_values($type_share)) ?>
+    },
+    newBuild: {
+        labels: <?= json_encode(array_keys($new_build_split)) ?>,
+        values: <?= json_encode(array_values($new_build_split)) ?>
+    }
+};
+
+let chartA, chartB;
+
+function renderChartA() {
+    const dataKey = document.getElementById('chartA-data').value;
+    const chartType = document.getElementById('chartA-type').value;
+    const dataset = chartDatasets[dataKey];
+
+    if (chartA) chartA.destroy();
+    chartA = new Chart(document.getElementById('chartA'), {
+        type: chartType,
+        data: {
+            labels: dataset.labels,
+            datasets: [{ label: 'Average price', data: dataset.values, backgroundColor: '#378ADD', borderColor: '#378ADD' }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+}
+
+function renderChartB() {
+    const dataKey = document.getElementById('chartB-data').value;
+    const chartType = document.getElementById('chartB-type').value;
+    const dataset = chartDatasets[dataKey];
+
+    if (chartB) chartB.destroy();
+    chartB = new Chart(document.getElementById('chartB'), {
+        type: chartType,
+        data: {
+            labels: dataset.labels,
+            datasets: [{ data: dataset.values, backgroundColor: ['#378ADD', '#D4537E', '#1D9E75', '#BA7517', '#6B5DD3'] }]
+        },
+        options: { responsive: true }
+    });
+}
+
+document.getElementById('chartA-data').addEventListener('change', renderChartA);
+document.getElementById('chartA-type').addEventListener('change', renderChartA);
+document.getElementById('chartB-data').addEventListener('change', renderChartB);
+document.getElementById('chartB-type').addEventListener('change', renderChartB);
+
+renderChartA();
+renderChartB();
+</script>
 
 <?php
 } catch (PDOException $e) {
