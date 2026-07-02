@@ -210,4 +210,54 @@ function get_new_build_split($pdo, $location = 'ALL') {
         'Existing' => 100 - $metrics['new_build_share']
     ];
 }
+
+function get_affordable_nearby($pdo, $limit = 10) {
+    $stmt = $pdo->prepare("
+        SELECT location, average_price
+        FROM dashboard_metrics
+        WHERE property_type IS NULL AND location != 'ALL'
+        ORDER BY average_price ASC
+        LIMIT :limit
+    ");
+    $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+function get_most_active_areas($pdo, $limit = 10) {
+    $stmt = $pdo->prepare("
+        SELECT location, sales_count
+        FROM dashboard_metrics
+        WHERE property_type IS NULL AND location != 'ALL'
+        ORDER BY sales_count DESC
+        LIMIT :limit
+    ");
+    $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+function get_top_types_by_volume($pdo, $location = 'ALL') {
+    $stmt = $pdo->prepare("
+        SELECT property_type, sales_count
+        FROM dashboard_metrics
+        WHERE location = :location AND property_type IS NOT NULL
+        ORDER BY sales_count DESC
+    ");
+    $stmt->execute(['location' => $location]);
+    return $stmt->fetchAll();
+}
+
+function get_recent_sales($pdo, $limit = 5) {
+    $stmt = $pdo->prepare("
+        SELECT postcode, property_type, price, date_of_transfer
+        FROM property_sales
+        WHERE ppd_category_type = 'A'
+        ORDER BY date_of_transfer DESC
+        LIMIT :limit
+    ");
+    $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
 ?>

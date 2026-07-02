@@ -93,6 +93,10 @@ try {
     $new_build_split = get_new_build_split($pdo);
     $metrics = get_metrics_row($pdo, 'ALL', null);
     $chart_a_data = get_price_by_property_type($pdo);
+    $affordable_nearby = get_affordable_nearby($pdo, 5);
+    $most_active = get_most_active_areas($pdo, 5);
+    $top_types = get_top_types_by_volume($pdo);
+    $recent_sales = get_recent_sales($pdo, 5);
 
     $average_price = $metrics['average_price'];
     $percent_change = $metrics['price_change_pct'];
@@ -107,6 +111,16 @@ try {
 <script>
 document.getElementById('loading-overlay').style.display = 'none';
 </script>
+
+<div style="font-family: Arial, sans-serif; padding: 2rem;">
+    <h2>UK Property Overview</h2>
+    <p>Average price: £<?= number_format($average_price) ?></p>
+    <p>Price change vs. previous 12 months: <?= $percent_change ?>%</p>
+    <p>Sales tracked (last 12 months): <?= number_format($sales_tracked) ?></p>
+    <p>Leasehold vs freehold gap: £<?= number_format($leasehold_gap) ?></p>
+    <p>Price range: £<?= number_format($price_min) ?> – £<?= number_format($price_max) ?></p>
+    <p style="color: #888; font-size: 13px;">Data computed in <?= $query_time ?> seconds</p>
+</div>
 
 <div style="display: flex; gap: 20px; margin-top: 2rem;">
 
@@ -140,6 +154,59 @@ document.getElementById('loading-overlay').style.display = 'none';
     </div>
 
 </div>
+
+<div style="display: flex; gap: 20px; margin-top: 2rem; flex-wrap: wrap;">
+
+    <div style="min-width: 250px;">
+        <h3>More affordable nearby</h3>
+        <table border="1" cellpadding="6">
+            <?php foreach ($affordable_nearby as $row): ?>
+                <tr>
+                    <td><?= htmlspecialchars($row['location']) ?></td>
+                    <td>£<?= number_format($row['average_price']) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+    </div>
+
+    <div style="min-width: 250px;">
+        <h3>Most active areas</h3>
+        <table border="1" cellpadding="6">
+            <?php foreach ($most_active as $row): ?>
+                <tr>
+                    <td><?= htmlspecialchars($row['location']) ?></td>
+                    <td><?= number_format($row['sales_count']) ?> sales</td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+    </div>
+
+    <div style="min-width: 250px;">
+        <h3>Top property types by volume</h3>
+        <table border="1" cellpadding="6">
+            <?php foreach ($top_types as $row): ?>
+                <tr>
+                    <td><?= htmlspecialchars($row['property_type']) ?></td>
+                    <td><?= number_format($row['sales_count']) ?> sales</td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+    </div>
+
+</div>
+
+<div style="min-width: 250px;">
+        <h3>Recent comparable sales</h3>
+        <table border="1" cellpadding="6">
+            <?php foreach ($recent_sales as $row): ?>
+                <tr>
+                    <td><?= htmlspecialchars($row['postcode']) ?> · <?= htmlspecialchars($row['property_type']) ?></td>
+                    <td>£<?= number_format($row['price']) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+</div>
+
 
 <script>
 // All the data PHP fetched, handed to JavaScript once
